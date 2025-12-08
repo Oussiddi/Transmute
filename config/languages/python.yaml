@@ -1,0 +1,77 @@
+# Python Language Configuration
+
+name: python
+display_name: Python
+version: "3.11"
+
+extensions:
+  - .py
+  - .pyw
+  - .pyi
+
+features:
+  - classes
+  - functions
+  - decorators
+  - generators
+  - async
+  - context_managers
+  - comprehensions
+  - type_hints
+  - dataclasses
+  - pattern_matching
+  - walrus_operator
+
+keywords:
+  - def
+  - class
+  - import
+  - from
+  - if
+  - elif
+  - else
+  - for
+  - while
+  - try
+  - except
+  - finally
+  - with
+  - as
+  - return
+  - yield
+  - lambda
+  - async
+  - await
+  - match
+  - case
+
+frameworks:
+  - django
+  - flask
+  - fastapi
+  - pytest
+  - sqlalchemy
+  - pydantic
+
+build_tools:
+  - setuptools
+  - poetry
+  - hatch
+
+package_managers:
+  - pip
+  - poetry
+  - conda
+
+syntax_mappings:
+  # Common patterns when translating FROM Python
+  list_comprehension: "for loop with append"
+  generator: "iterator"
+  decorator: "annotation/wrapper"
+  with_statement: "try-with-resources"
+
+metadata:
+  typing_system: "gradual"
+  paradigm: "multi-paradigm"
+  memory_management: "automatic"
+  compiled: false

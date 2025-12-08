@@ -1,0 +1,58 @@
+name: csharp
+display_name: "C#"
+version: "12.0"
+
+extensions:
+  - .cs
+
+features:
+  - classes
+  - interfaces
+  - structs
+  - enums
+  - properties
+  - events
+  - delegates
+  - generics
+  - async
+  - await
+  - linq
+  - lambdas
+  - extension_methods
+  - attributes
+  - indexers
+  - operators
+  - nullable_types
+  - pattern_matching
+  - records
+  - init_only_setters
+  - top_level_statements
+
+frameworks:
+  - dotnet
+  - aspnet
+  - aspnet_core
+  - entity_framework
+  - blazor
+  - xamarin
+  - maui
+  - wpf
+  - winforms
+  - nunit
+  - xunit
+
+build_tools:
+  - msbuild
+  - dotnet_cli
+  - nuget
+
+package_managers:
+  - nuget
+
+syntax_mappings:
+  property: "getter_setter/attribute"
+  delegate: "function_pointer/callback"
+  linq: "query_expression"
+  attribute: "decorator/annotation"
+  nullable: "optional_type"
+  record: "immutable_class/data_class"

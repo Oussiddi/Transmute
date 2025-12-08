@@ -1,0 +1,52 @@
+name: javascript
+display_name: JavaScript
+version: "ES2023"
+
+extensions:
+  - .js
+  - .jsx
+  - .mjs
+  - .cjs
+
+features:
+  - classes
+  - functions
+  - arrow_functions
+  - async
+  - await
+  - promises
+  - generators
+  - template_literals
+  - destructuring
+  - spread
+  - modules
+  - exports
+
+frameworks:
+  - react
+  - vue
+  - angular
+  - express
+  - next
+  - node
+  - jest
+  - webpack
+
+build_tools:
+  - npm
+  - webpack
+  - babel
+  - rollup
+  - vite
+
+package_managers:
+  - npm
+  - yarn
+  - pnpm
+
+syntax_mappings:
+  arrow_function: "lambda/anonymous_function"
+  promise: "future/async_result"
+  template_literal: "string_interpolation"
+  destructuring: "unpacking"
+  spread: "splat/unpack"

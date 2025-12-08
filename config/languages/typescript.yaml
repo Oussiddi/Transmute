@@ -1,0 +1,62 @@
+name: typescript
+display_name: TypeScript
+version: "5.3"
+
+extensions:
+  - .ts
+  - .tsx
+
+features:
+  - classes
+  - functions
+  - arrow_functions
+  - async
+  - await
+  - promises
+  - generators
+  - template_literals
+  - destructuring
+  - spread
+  - modules
+  - exports
+  - interfaces
+  - type_annotations
+  - generics
+  - enums
+  - type_aliases
+  - decorators
+  - namespaces
+  - abstract_classes
+  - readonly
+  - access_modifiers
+
+frameworks:
+  - react
+  - vue
+  - angular
+  - express
+  - next
+  - nest
+  - jest
+  - webpack
+
+build_tools:
+  - npm
+  - webpack
+  - babel
+  - rollup
+  - vite
+  - tsc
+
+package_managers:
+  - npm
+  - yarn
+  - pnpm
+
+syntax_mappings:
+  interface: "protocol/abstract_class"
+  type_annotation: "type_hint"
+  generic: "template/parametric_type"
+  enum: "enumeration"
+  decorator: "annotation"
+  namespace: "module/package"

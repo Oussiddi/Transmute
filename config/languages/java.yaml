@@ -1,0 +1,84 @@
+# Java Language Configuration
+
+name: java
+display_name: Java
+version: "17"
+
+extensions:
+  - .java
+
+features:
+  - classes
+  - interfaces
+  - inheritance
+  - generics
+  - annotations
+  - lambdas
+  - streams
+  - exceptions
+  - threads
+  - reflection
+  - enums
+  - records
+
+keywords:
+  - class
+  - interface
+  - extends
+  - implements
+  - public
+  - private
+  - protected
+  - static
+  - final
+  - abstract
+  - synchronized
+  - volatile
+  - transient
+  - native
+  - if
+  - else
+  - for
+  - while
+  - do
+  - switch
+  - case
+  - try
+  - catch
+  - finally
+  - throw
+  - throws
+  - return
+  - new
+  - this
+  - super
+
+frameworks:
+  - spring
+  - spring_boot
+  - hibernate
+  - junit
+  - maven
+  - gradle
+
+build_tools:
+  - maven
+  - gradle
+  - ant
+
+package_managers:
+  - maven
+  - gradle
+
+syntax_mappings:
+  # Common patterns when translating FROM Java
+  interface: "protocol/abstract_class"
+  annotation: "decorator"
+  generic: "type_parameter"
+  stream: "generator/comprehension"
+
+metadata:
+  typing_system: "static"
+  paradigm: "object-oriented"
+  memory_management: "automatic"
+  compiled: true

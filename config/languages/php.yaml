@@ -1,0 +1,59 @@
+name: php
+display_name: PHP
+version: "8.3"
+
+extensions:
+  - .php
+
+features:
+  - classes
+  - interfaces
+  - traits
+  - namespaces
+  - functions
+  - closures
+  - generators
+  - attributes
+  - enums
+  - properties
+  - constants
+  - static
+  - abstract
+  - final
+  - visibility
+  - type_hints
+  - return_types
+  - nullable_types
+  - union_types
+  - named_arguments
+  - match_expression
+  - arrow_functions
+  - nullsafe_operator
+
+frameworks:
+  - laravel
+  - symfony
+  - wordpress
+  - drupal
+  - codeigniter
+  - yii
+  - phalcon
+  - slim
+  - phpunit
+  - composer
+
+build_tools:
+  - composer
+  - phpunit
+  - psalm
+  - phpstan
+
+package_managers:
+  - composer
+
+syntax_mappings:
+  trait: "mixin"
+  arrow_function: "lambda/short_closure"
+  attribute: "decorator/annotation"
+  match_expression: "switch_expression"
+  nullsafe_operator: "optional_chaining"

@@ -1,0 +1,78 @@
+[tool.poetry]
+name = "transmute"
+version = "0.1.0"
+description = "Intelligent code migration powered by LangGraph"
+authors = ["Mohammed Oussiddi <oussiddi.m@gmail.com>"]
+readme = "README.md"
+packages = [{include = "transmute", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+# LangChain & LangGraph - Latest versions
+langgraph = "^0.2.55"  # Latest stable
+langchain = "^0.3.15"   # Latest stable
+langchain-core = "^0.3.28"
+langchain-anthropic = "^0.3.1"
+langchain-community = "^0.3.14"
+
+# Pydantic
+pydantic = "^2.10"
+pydantic-settings = "^2.7"
+
+# Utilities
+loguru = "^0.7.3"
+pyyaml = "^6.0.2"
+python-dotenv = "^1.0.1"
+
+# Vector stores
+qdrant-client = "^1.12.1"
+
+# Embeddings
+sentence-transformers = "^3.3.1"
+
+# Tree-sitter for AST parsing
+tree-sitter = "^0.23.2"
+tree-sitter-python = "^0.23.6"
+tree-sitter-java = "^0.23.4"
+tree-sitter-javascript = "^0.23.1"
+
+# CLI
+typer = "^0.15.1"
+rich = "^13.9.4"
+
+# Git operations
+gitpython = "^3.1.43"
+
+# Testing utilities
+httpx = "^0.28.1"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.4"
+pytest-asyncio = "^0.24.0"
+pytest-cov = "^6.0.0"
+pytest-mock = "^3.14.0"
+black = "^24.10.0"
+ruff = "^0.8.4"
+mypy = "^1.13.0"
+ipython = "^8.31.0"
+
+[tool.poetry.scripts]
+transmute = "transmute.__main__:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true

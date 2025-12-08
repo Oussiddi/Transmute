@@ -1,0 +1,17 @@
+# Test configuration file
+version: "0.1.0"
+app_name: "transmute"
+
+settings:
+  debug: true
+  timeout: 30
+  
+features:
+  - translation
+  - validation
+  - testing
+
+nested:
+  level1:
+    level2:
+      value: "deep"

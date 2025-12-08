@@ -1,0 +1,30 @@
+# Transmute Default Configuration
+
+transmute:
+  version: "0.1.0"
+  
+  # LLM Settings
+  llm:
+    provider: "anthropic"
+    model: "claude-sonnet-4-20250514"
+    temperature: 0.1
+    max_tokens: 4096
+    timeout: 60
+  
+  # RAG Settings
+  rag:
+    vector_store: "qdrant"
+    qdrant_url: "http://localhost:6333"
+    embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+    collection_name: "transmute-code"
+    chunk_size: 1000
+    chunk_overlap: 200
+    top_k: 5
+    similarity_threshold: 0.7
+  
+  # Paths
+  data_dir: "/tmp/transmute"
+  
+  # Logging
+  log_level: "INFO"
+  log_file: null

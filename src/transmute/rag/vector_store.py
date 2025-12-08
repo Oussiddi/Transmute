@@ -17,6 +17,8 @@ from qdrant_client.models import (
     FieldCondition,
     MatchValue,
 )
+from qdrant_client.models import FieldCondition, Filter, MatchValue
+
 
 from transmute.utils.logger import get_logger
 
@@ -220,22 +222,34 @@ class VectorStore:
                 query_filter = Filter(must=conditions)
             
             # Search
-            search_result = self.client.search(
+            search_result = self.client.query_points(
                 collection_name=self.collection_name,
-                query_vector=query_embedding,
+                query=query_embedding,
                 limit=top_k,
                 query_filter=query_filter,
                 score_threshold=score_threshold
             )
             
-            # Format results
+            # Format results - handle QueryResponse object
             results = []
-            for hit in search_result:
-                results.append({
-                    'id': hit.id,
-                    'score': hit.score,
-                    **hit.payload
-                })
+            
+            # Check if it's a QueryResponse with points attribute
+            if hasattr(search_result, 'points'):
+                # New API format
+                for point in search_result.points:
+                    results.append({
+                        'id': point.id,
+                        'score': point.score,
+                        **point.payload
+                    })
+            else:
+                # Fallback for old format or list
+                for hit in search_result:
+                    results.append({
+                        'id': hit.id,
+                        'score': hit.score,
+                        **hit.payload
+                    })
             
             logger.info(f"Found {len(results)} similar patterns")
             

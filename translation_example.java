@@ -11,7 +11,7 @@ class Borg {
     protected static Map<String, Object> sharedState = new HashMap<>();
 
     public Borg() {
-        // In Java, we can't directly assign the instance's field map like Python's __dict__
+        // In Java, we can't directly replace the instance's field map like Python's __dict__
         // Instead, we'll use getter/setter methods to access the shared state
     }
 

@@ -1,476 +1,472 @@
-#!/usr/bin/env python3
 """
-Transmute Demo - Real GitHub Repository Translation
+Enhanced Transmute Demo - Showcasing Advanced Features
 
-Demonstrates complete end-to-end translation of a real GitHub repository!
+Demonstrates:
+- Agent orchestration
+- Retry mechanisms
+- Human-in-the-loop (optional)
+- Middleware pipelines
+- Advanced error handling
 """
 
-import os
 import sys
-from pathlib import Path
 import argparse
+import os
+import uuid
+from pathlib import Path
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent / "src"))
-
-from transmute.workflows import TransmuteWorkflow
-from transmute.languages.registry import LanguageRegistry
-from transmute.languages.plugins import (
-    PythonPlugin,
-    JavaPlugin,
-    JavaScriptPlugin,
-    TypeScriptPlugin,
-    CSharpPlugin,
-    PHPPlugin,
-)
+from transmute.core.state import TransmuteState
+from transmute.languages import LanguageRegistry
 from transmute.rag import RAGSystem
-from transmute.utils.logger import setup_logger
+from transmute.llm import ClaudeClient
+from transmute.workflows import TransmuteWorkflow
+from transmute.utils.logger import get_logger, setup_logger
 
 # Setup logging
 setup_logger(level="INFO")
+logger = get_logger(__name__)
 
 
-# Small public Python repositories for demo
+# Example repositories
 EXAMPLE_REPOS = {
-    "hello-algo": {
-        "url": "https://github.com/krahets/hello-algo",
-        "description": "Animation-based data structures and algorithms tutorial (has Python code)",
-        "target": "java"
-    },
     "python-patterns": {
         "url": "https://github.com/faif/python-patterns",
-        "description": "Collection of design patterns in Python",
-        "target": "java"
+        "description": "Python design patterns (default)",
+        "language": "python"
     },
-    "httpie": {
-        "url": "https://github.com/httpie/httpie",
-        "description": "Modern HTTP client (might be large, use with caution)",
-        "target": "java"
+    "algorithms": {
+        "url": "https://github.com/krahets/hello-algo",
+        "description": "Algorithm implementations",
+        "language": "python"
     },
-    "rich": {
-        "url": "https://github.com/Textualize/rich",
-        "description": "Rich text formatting library (might be large)",
-        "target": "java"
-    },
-    "simple": {
-        "url": "https://github.com/gto76/python-cheatsheet",
-        "description": "Python cheatsheet with code examples",
-        "target": "java"
+    "flask-simple": {
+        "url": "https://github.com/pallets/flask",
+        "description": "Flask web framework",
+        "language": "python"
     }
 }
 
-# Best for quick demo - very small!
-DEFAULT_REPO = "https://github.com/faif/python-patterns"
-DEFAULT_TARGET = "java"
 
-
-def print_banner():
-    """Print demo banner."""
-    print("=" * 80)
-    print("🚀 TRANSMUTE - AI-Powered Code Translation")
-    print("   Real GitHub Repository Demo")
-    print("=" * 80)
-    print()
-
-
-def print_section(title: str):
-    """Print section header."""
-    print()
-    print("─" * 80)
-    print(f"📍 {title}")
-    print("─" * 80)
-
-
-def check_prerequisites():
-    """Check if system is ready."""
-    print_section("Checking Prerequisites")
-    
-    all_good = True
+def check_prerequisites() -> bool:
+    """Check if all prerequisites are met."""
+    issues = []
     
     # Check API key
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if api_key:
-        print("✅ ANTHROPIC_API_KEY found")
-        print("   Will use REAL Claude API for translation!")
+    import os
+    if not os.getenv("ANTHROPIC_API_KEY"):
+        issues.append("❌ ANTHROPIC_API_KEY not set")
     else:
-        print("⚠️  ANTHROPIC_API_KEY not set")
-        print("   Translation will use placeholder mode")
-        print("   Set ANTHROPIC_API_KEY for real translations")
-        all_good = False
+        logger.info("✓ API key found")
     
-    # Check config directory
-    config_dir = Path("config/languages")
-    if config_dir.exists():
-        print(f"✅ Config directory found: {config_dir}")
-    else:
-        print(f"❌ Config directory not found: {config_dir}")
-        all_good = False
-    
-    # Check Docker/Qdrant
+    # Check Qdrant
     try:
         import requests
         response = requests.get("http://localhost:6333/", timeout=2)
         if response.status_code == 200:
-            print("✅ Qdrant is running (http://localhost:6333)")
+            logger.info("✓ Qdrant running")
         else:
-            print("⚠️  Qdrant responded but might not be ready")
+            issues.append("❌ Qdrant not responding")
     except:
-        print("⚠️  Qdrant not detected (optional)")
-        print("   Start with: docker-compose up -d")
-        print("   RAG features will be disabled")
+        issues.append("❌ Qdrant not running (start with: docker-compose up -d)")
     
-    print()
-    return all_good
+    # Check config
+    config_path = Path("config/languages")
+    if not config_path.exists():
+        issues.append("❌ Config directory not found")
+    else:
+        logger.info("✓ Config directory found")
+    
+    if issues:
+        logger.error("Prerequisites not met:")
+        for issue in issues:
+            logger.error(f"  {issue}")
+        return False
+    
+    return True
 
 
-def setup_languages():
-    """Setup language registry with all plugins."""
-    print_section("Setting Up Language Support")
+def initialize_rag(registry: LanguageRegistry) -> RAGSystem:
+    """Initialize RAG system with example patterns."""
+    logger.info("Initializing RAG system...")
     
-    config_dir = Path("config/languages")
-    registry = LanguageRegistry(config_dir=config_dir)
+    rag = RAGSystem()
     
-    # Register all plugins
-    plugins = [
-        ("python", PythonPlugin),
-        ("java", JavaPlugin),
-        ("javascript", JavaScriptPlugin),
-        ("typescript", TypeScriptPlugin),
-        ("csharp", CSharpPlugin),
-        ("php", PHPPlugin),
+    # Add some example patterns
+    example_patterns = [
+        {
+            "source_language": "python",
+            "target_language": "java",
+            "feature": "classes",
+            "source_code": "class MyClass:\n    def __init__(self):\n        self.value = 0",
+            "target_code": "public class MyClass {\n    private int value = 0;\n}",
+            "metadata": {
+                "complexity": 0.3,
+                "confidence": 0.95
+            }
+        },
+        {
+            "source_language": "python",
+            "target_language": "java",
+            "feature": "functions",
+            "source_code": "def greet(name):\n    return f'Hello, {name}'",
+            "target_code": "public static String greet(String name) {\n    return \"Hello, \" + name;\n}",
+            "metadata": {
+                "complexity": 0.2,
+                "confidence": 0.98
+            }
+        },
+        {
+            "source_language": "python",
+            "target_language": "java",
+            "feature": "list_comprehensions",
+            "source_code": "squares = [x**2 for x in range(10)]",
+            "target_code": "List<Integer> squares = IntStream.range(0, 10)\n    .map(x -> x * x)\n    .boxed()\n    .collect(Collectors.toList());",
+            "metadata": {
+                "complexity": 0.6,
+                "confidence": 0.85
+            }
+        },
+        {
+            "source_language": "python",
+            "target_language": "java",
+            "feature": "decorators",
+            "source_code": "@property\ndef name(self):\n    return self._name",
+            "target_code": "public String getName() {\n    return this.name;\n}",
+            "metadata": {
+                "complexity": 0.5,
+                "confidence": 0.80
+            }
+        },
+        {
+            "source_language": "python",
+            "target_language": "java",
+            "feature": "exception_handling",
+            "source_code": "try:\n    result = risky_operation()\nexcept ValueError as e:\n    print(e)",
+            "target_code": "try {\n    result = riskyOperation();\n} catch (IllegalArgumentException e) {\n    System.out.println(e);\n}",
+            "metadata": {
+                "complexity": 0.3,
+                "confidence": 0.92
+            }
+        }
     ]
     
-    registered = []
-    for name, plugin_class in plugins:
-        try:
-            registry.register_plugin(name, plugin_class)
-            print(f"✅ {name}")
-            registered.append(name)
-        except Exception as e:
-            print(f"⚠️  {name}: {e}")
+    for pattern in example_patterns:
+        rag.add_pattern(**pattern)
     
-    print(f"\n📊 Total languages: {len(registered)}")
-    print(f"   Supported: {', '.join(registered)}")
+    logger.info(f"Added {len(example_patterns)} example patterns")
     
-    return registry
+    return rag
 
-
-def setup_rag():
-    """Setup RAG system with example patterns."""
-    print_section("Setting Up RAG System")
+def run_demo(
+    repo_url: str,
+    target_language: str = "java",
+    branch: str = "main",
+    use_hitl: bool = False,
+    max_files: int = 10
+):
+    """
+    Run the enhanced demo.
     
-    try:
-        rag = RAGSystem(
-            qdrant_url="http://localhost:6333",
-            collection_name="transmute-demo"
-        )
-        
-        # Add comprehensive example patterns
-        example_patterns = [
-            # Python to Java - Basic patterns
-            {
-                "source_code": "for item in items:\n    print(item)",
-                "target_code": "for (Item item : items) {\n    System.out.println(item);\n}",
-                "source_language": "python",
-                "target_language": "java",
-                "feature": "for_loop",
-                "description": "For loop with print"
-            },
-            {
-                "source_code": "def greet(name):\n    return f'Hello, {name}'",
-                "target_code": "public String greet(String name) {\n    return \"Hello, \" + name;\n}",
-                "source_language": "python",
-                "target_language": "java",
-                "feature": "functions",
-                "description": "Function with string formatting"
-            },
-            {
-                "source_code": "class Person:\n    def __init__(self, name):\n        self.name = name\n    \n    def greet(self):\n        return f'Hi, {self.name}'",
-                "target_code": "public class Person {\n    private String name;\n    \n    public Person(String name) {\n        this.name = name;\n    }\n    \n    public String greet() {\n        return \"Hi, \" + name;\n    }\n}",
-                "source_language": "python",
-                "target_language": "java",
-                "feature": "classes",
-                "description": "Class with constructor and method"
-            },
-            {
-                "source_code": "numbers = [1, 2, 3, 4, 5]\nsquares = [x ** 2 for x in numbers]",
-                "target_code": "List<Integer> numbers = Arrays.asList(1, 2, 3, 4, 5);\nList<Integer> squares = numbers.stream()\n    .map(x -> x * x)\n    .collect(Collectors.toList());",
-                "source_language": "python",
-                "target_language": "java",
-                "feature": "comprehensions",
-                "description": "List comprehension to stream"
-            },
-            {
-                "source_code": "try:\n    result = risky_operation()\nexcept ValueError as e:\n    print(f'Error: {e}')",
-                "target_code": "try {\n    result = riskyOperation();\n} catch (ValueError e) {\n    System.out.println(\"Error: \" + e.getMessage());\n}",
-                "source_language": "python",
-                "target_language": "java",
-                "feature": "exceptions",
-                "description": "Exception handling"
-            },
-        ]
-        
-        print("📦 Adding example translation patterns...")
-        for i, pattern in enumerate(example_patterns, 1):
-            rag.add_pattern(**pattern)
-            print(f"   {i}. {pattern['feature']}: {pattern['description']}")
-        
-        stats = rag.get_statistics()
-        print(f"\n✅ RAG initialized")
-        print(f"   Patterns: {stats['total_patterns']}")
-        print(f"   Model: {stats['embedding_model']}")
-        print(f"   Dimensions: {stats['embedding_dim']}")
-        
-        return rag
-        
-    except Exception as e:
-        print(f"⚠️  RAG not available: {e}")
-        print("   Continuing without RAG")
-        print("   Translations will work but without pattern context")
-        return None
-
-
-def run_demo(repo_url: str, target_language: str, branch: str = None):
-    """Run the complete demo."""
-    print_banner()
+    Args:
+        repo_url: Repository URL
+        target_language: Target language
+        branch: Git branch
+        use_hitl: Enable human-in-the-loop
+        max_files: Maximum files to translate
+    """
+    logger.info("=" * 70)
+    logger.info("TRANSMUTE - ENHANCED DEMO")
+    logger.info("=" * 70)
+    logger.info("")
     
-    # Show what we're doing
-    print(f"📦 Repository: {repo_url}")
-    print(f"🎯 Target Language: {target_language}")
-    if branch:
-        print(f"🌿 Branch: {branch}")
-    print()
+    # Check prerequisites
+    if not check_prerequisites():
+        logger.error("Please fix prerequisites and try again")
+        sys.exit(1)
     
-    # Prerequisites
-    has_api_key = check_prerequisites()
+    logger.info("")
     
-    # Setup
-    registry = setup_languages()
-    rag_system = setup_rag()
+    # Initialize components
+    logger.info("Initializing Transmute components...")
     
-    # Create workflow
-    print_section("Initializing Transmute Workflow")
+    registry = LanguageRegistry()
     
-    workflow = TransmuteWorkflow(
-        language_registry=registry,
-        work_dir=Path("./transmute_work"),
-        use_checkpoints=True
+    # Import and register plugins directly
+    from transmute.languages.plugins import (
+        PythonPlugin,
+        JavaPlugin,
+        JavaScriptPlugin,
+        TypeScriptPlugin,
+        CSharpPlugin,
+        PHPPlugin
     )
     
-    print("✅ Workflow initialized")
-    print(f"   • Analysis Agent: Ready")
-    print(f"   • Planning Agent: Ready")
-    print(f"   • Translation Agent: {'Claude API' if has_api_key else 'Placeholder Mode'}")
-    print(f"   • Validation Agent: Ready")
-    print(f"   • RAG System: {'Enabled' if rag_system else 'Disabled'}")
+    # Register all plugins (pass CLASSES, not instances)
+    registry.register_plugin("python", PythonPlugin)
+    registry.register_plugin("java", JavaPlugin)
+    registry.register_plugin("javascript", JavaScriptPlugin)
+    registry.register_plugin("typescript", TypeScriptPlugin)
+    registry.register_plugin("csharp", CSharpPlugin)
+    registry.register_plugin("php", PHPPlugin)
     
-    # Run translation
-    print_section("🚀 Running Complete Translation Pipeline")
+    logger.info(f"✓ Loaded {len(registry.get_supported_languages())} language plugins")
     
-    print(f"Cloning and analyzing repository...")
-    print(f"This may take a minute for larger repos...\n")
+    rag_system = initialize_rag(registry)
+    logger.info("✓ RAG system initialized")
+    
+    claude_client = ClaudeClient()
+    logger.info("✓ Claude client initialized")
+    
+    # Create enhanced workflow with new features
+    workflow = TransmuteWorkflow(
+        registry=registry,
+        rag_system=rag_system,
+        claude_client=claude_client,
+        use_hitl=use_hitl,
+        hitl_confidence_threshold=0.75
+    )
+    logger.info("✓ Enhanced workflow created")
+    
+    if use_hitl:
+        logger.info("  • Human-in-the-loop: ENABLED")
+        logger.info("  • Confidence threshold: 0.75")
+    
+    logger.info("  • Retry mechanism: ENABLED (max 3 retries)")
+    logger.info("  • Middleware pipeline: ENABLED")
+    logger.info("    - Code normalization")
+    logger.info("    - Comment preservation")
+    logger.info("    - Quality checking")
+    
+    logger.info("")
+    
+    # Create initial state
+    logger.info(f"Repository: {repo_url}")
+    logger.info(f"Target Language: {target_language}")
+    logger.info(f"Branch: {branch}")
+    logger.info("")
+    
+    # Create initial state
+    logger.info(f"Repository: {repo_url}")
+    logger.info(f"Target Language: {target_language}")
+    logger.info(f"Branch: {branch}")
+    logger.info("")
+    
+    # Check if language is supported
+    if not registry.is_supported(target_language):
+        logger.error(f"Target language '{target_language}' not found!")
+        logger.error(f"Available languages: {', '.join(registry.get_supported_languages())}")
+        sys.exit(1)
+    
+    # Create LanguageInfo from config
+    from transmute.core.state import LanguageInfo
+    config = registry._configs[target_language]
+    target_lang = LanguageInfo(
+        name=config.name,
+        version=config.version if hasattr(config, 'version') else None
+    )
+    
+    state = TransmuteState(
+        session_id=f"demo_{uuid.uuid4().hex[:8]}"
+    )
+    
+    # Create repository metadata object
+    from transmute.core.state import RepositoryMetadata
+    state.repository = RepositoryMetadata(
+        url=repo_url,
+        platform="github",  # Could parse from URL
+        branch=branch,
+        local_path=Path("transmute_work/repo")
+    )
+    
+    # Set target language
+    state.target_language = target_lang
+    
+    # Add to metadata as well
+    state.metadata['repository_url'] = repo_url
+    state.metadata['target_language_name'] = target_language
+    state.metadata['branch'] = branch
+    state.metadata['max_files'] = max_files
+    
+    # Run workflow with streaming
+    logger.info("=" * 70)
+    logger.info("WORKFLOW EXECUTION")
+    logger.info("=" * 70)
+    logger.info("")
     
     try:
-        # Stream workflow for real-time updates
-        print("📊 Progress:")
-        print()
+        file_count = 0
         
-        for i, update in enumerate(workflow.stream(
-            repository_url=repo_url,
-            target_language=target_language,
-            branch=branch
-        ), 1):
-            current_step = update.get('current_step', 'unknown')
-            
-            if current_step == 'planning':
-                print(f"   ✅ Analysis complete")
-            elif current_step == 'translation':
-                if 'migration_plan' in update:
-                    plan = update['migration_plan']
-                    completed = len(plan.get_completed_units())
-                    total = plan.total_units
-                    print(f"   🔄 Translating... {completed}/{total} files")
-            elif current_step == 'validation':
-                print(f"   ✅ Translation complete")
-            elif current_step == 'completed':
-                print(f"   ✅ Validation complete")
-                break
-            elif current_step == 'error':
-                print(f"   ❌ Error occurred")
-                break
+        for step_output in workflow.stream(state, thread_id="demo"):
+            # Display progress
+            if isinstance(step_output, dict):
+                for node_name, node_state in step_output.items():
+                    if node_name == "translate":
+                        # Count files
+                        if hasattr(node_state, 'migration_plan') and node_state.migration_plan:
+                            completed = sum(
+                                1 for unit in node_state.migration_plan.translation_units
+                                if unit.status == "completed"
+                            )
+                            
+                            if completed > file_count:
+                                file_count = completed
+                                logger.info(f"Progress: {file_count} files translated")
+                                
+                                # Stop after max_files
+                                if file_count >= max_files:
+                                    logger.info(f"\nReached limit of {max_files} files")
+                                    break
         
-        # Get final state
-        final_state = workflow.run(repo_url, target_language, branch)
+        final_state = state
         
-        print_section("📊 Translation Results")
-        
-        # Convert to state object if needed
-        from transmute.core.state import TransmuteState
-        if isinstance(final_state, dict):
-            state_obj = TransmuteState(**final_state)
-        else:
-            state_obj = final_state
+        logger.info("")
+        logger.info("=" * 70)
+        logger.info("RESULTS")
+        logger.info("=" * 70)
+        logger.info("")
         
         # Display results
-        if state_obj.migration_plan:
-            plan = state_obj.migration_plan
+        if final_state.migration_plan:
+            plan = final_state.migration_plan
             
-            print(f"\n✨ Translation Complete!")
-            print(f"\n📈 Statistics:")
-            print(f"   Total Files: {plan.total_units}")
-            print(f"   Completed: {len(plan.get_completed_units())}")
-            print(f"   Failed: {len([u for u in plan.translation_units if u.status == 'failed'])}")
-            print(f"   Strategy: {plan.overall_strategy.value}")
+            total_units = len(plan.translation_units)
+            completed = sum(1 for u in plan.translation_units if u.status == "completed")
+            failed = sum(1 for u in plan.translation_units if u.status == "failed")
             
-            if hasattr(state_obj, 'duration_seconds'):
-                print(f"   Duration: {state_obj.duration_seconds:.2f}s")
-            
-            if state_obj.feature_profile:
-                print(f"\n🔍 Code Analysis:")
-                print(f"   Complexity: {state_obj.feature_profile.complexity_score:.2f}/1.0")
-                print(f"   Features Detected: {len(state_obj.feature_profile.features_used)}")
-                
-                # Show top features
-                top_features = state_obj.feature_profile.top_features(5)
-                if top_features:
-                    print(f"   Top Features:")
-                    for feature, count in top_features:
-                        print(f"      • {feature}: {count}")
-                
-                if state_obj.feature_profile.framework_detected:
-                    print(f"   Framework: {state_obj.feature_profile.framework_detected}")
+            logger.info(f"Translation Summary:")
+            logger.info(f"  Total files: {total_units}")
+            logger.info(f"  Completed: {completed}")
+            logger.info(f"  Failed: {failed}")
+            logger.info(f"  Success rate: {(completed/total_units*100):.1f}%" if total_units > 0 else "N/A")
+            logger.info("")
             
             # Show sample translations
-            print(f"\n📄 Translated Files:")
-            completed_units = plan.get_completed_units()
+            if completed > 0:
+                logger.info("Sample translations:")
+                for i, unit in enumerate(plan.translation_units):
+                    if unit.status == "completed" and i < 3:
+                        confidence = unit.confidence_score or 0
+                        logger.info(f"  • {unit.source_path}: {confidence:.0%} confidence")
             
-            for i, unit in enumerate(completed_units[:5], 1):  # Show first 5
-                print(f"\n   {i}. {unit.source_path}")
-                if unit.confidence_score:
-                    print(f"      Confidence: {unit.confidence_score:.0%}")
-                
-                if unit.translated_code:
-                    lines = unit.translated_code.split('\n')[:8]
-                    print(f"      Translation preview:")
-                    for line in lines:
-                        print(f"         {line}")
-                    if len(unit.translated_code.split('\n')) > 8:
-                        total_lines = len(unit.translated_code.split('\n'))
-                        print(f"         ... ({total_lines} total lines)")
+            logger.info("")
             
-            if len(completed_units) > 5:
-                print(f"\n   ... and {len(completed_units) - 5} more files")
+            # Show output location
+            output_dir = Path("demo_output/translations")
+            if output_dir.exists():
+                file_count = len(list(output_dir.rglob("*.java")))
+                logger.info(f"✓ Translations saved to: demo_output/translations/")
+                logger.info(f"  {file_count} files created")
         
-        else:
-            print("\n⚠️  No translations completed")
+        # Workflow statistics
+        logger.info("")
+        logger.info("Workflow Statistics:")
+        stats = workflow.get_workflow_statistics()
         
-        # Show errors if any
-        if hasattr(state_obj, 'errors') and state_obj.errors:
-            print(f"\n⚠️  Errors encountered:")
-            for error in state_obj.errors[:3]:
-                print(f"   • {error}")
-            if len(state_obj.errors) > 3:
-                print(f"   ... and {len(state_obj.errors) - 3} more")
+        logger.info(f"  Retry events: {len(stats['retry_history'])}")
+        logger.info(f"  Middleware: {', '.join(stats['middleware_enabled'])}")
         
-        # Export results
-        output_dir = Path("./demo_output")
-        print_section("💾 Exporting Results")
+        if 'hitl_statistics' in stats:
+            hitl_stats = stats['hitl_statistics']
+            logger.info(f"  Reviews performed: {hitl_stats.get('total_reviews', 0)}")
+            logger.info(f"  Approval rate: {hitl_stats.get('approval_rate', 0):.0%}")
         
-        result_path = workflow.export_results(state_obj, output_dir)
+        logger.info("")
+        logger.info("=" * 70)
+        logger.info("DEMO COMPLETE!")
+        logger.info("=" * 70)
         
-        print(f"✅ Results exported to: {result_path.absolute()}")
-        print(f"   • summary.txt - Translation summary")
-        
-        if (output_dir / "translations").exists():
-            translation_count = len(list((output_dir / "translations").glob("*")))
-            print(f"   • translations/ - {translation_count} translated files")
-        
-        print_section("✨ Demo Complete!")
-        
-        print(f"\n📁 Output directory: {output_dir.absolute()}")
-        print(f"🌐 Repository: {repo_url}")
-        print(f"🎯 Target: {target_language}")
-        
-        if not has_api_key:
-            print(f"\n💡 Tip: Set ANTHROPIC_API_KEY to see real AI-powered translations!")
-        
-        # Cleanup
-        print_section("🧹 Cleanup")
-        try:
-            workflow.cleanup(state_obj)
-            print("✅ Cleaned up temporary files")
-        except:
-            pass
-        
-        return True
-        
+    except KeyboardInterrupt:
+        logger.info("\n\nDemo interrupted by user")
     except Exception as e:
-        print(f"\n❌ Demo failed: {e}")
+        logger.error(f"\nDemo failed: {e}")
         import traceback
         traceback.print_exc()
-        return False
 
 
 def main():
-    """Main entry point with argument parsing."""
+    """Main entry point."""
     parser = argparse.ArgumentParser(
-        description="Transmute Demo - Translate real GitHub repositories",
+        description="Transmute Enhanced Demo - AI-Powered Code Translation",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
+  # Basic demo (default repo)
   python demo.py
-  python demo.py --repo https://github.com/user/project
-  python demo.py --repo https://github.com/user/project --target javascript
-  python demo.py --repo https://github.com/user/project --branch develop
-
-Environment Variables:
-  ANTHROPIC_API_KEY - Required for real AI translations
   
-Example Repos (small Python projects):
-  - https://github.com/faif/python-patterns (design patterns)
-  - https://github.com/krahets/hello-algo (algorithms tutorial)
-"""
+  # Custom repository
+  python demo.py --repo https://github.com/username/repo --target java
+  
+  # With human-in-the-loop review
+  python demo.py --hitl
+  
+  # Translate more files
+  python demo.py --max-files 20
+  
+  # List example repositories
+  python demo.py --list-examples
+        """
     )
     
     parser.add_argument(
-        "--repo",
-        default=DEFAULT_REPO,
-        help=f"GitHub repository URL (default: {DEFAULT_REPO})"
+        '--repo',
+        type=str,
+        default=EXAMPLE_REPOS['python-patterns']['url'],
+        help='Repository URL to translate'
     )
     
     parser.add_argument(
-        "--target",
-        default=DEFAULT_TARGET,
-        choices=["python", "java", "javascript", "typescript", "csharp", "php"],
-        help=f"Target language (default: {DEFAULT_TARGET})"
+        '--target',
+        type=str,
+        default='java',
+        help='Target language (default: java)'
     )
     
     parser.add_argument(
-        "--branch",
-        default=None,
-        help="Git branch to clone (default: main branch)"
+        '--branch',
+        type=str,
+        default='main',
+        help='Git branch (default: main)'
     )
     
     parser.add_argument(
-        "--list-examples",
-        action="store_true",
-        help="List example repositories"
+        '--hitl',
+        action='store_true',
+        help='Enable human-in-the-loop review'
+    )
+    
+    parser.add_argument(
+        '--max-files',
+        type=int,
+        default=10,
+        help='Maximum files to translate (default: 10)'
+    )
+    
+    parser.add_argument(
+        '--list-examples',
+        action='store_true',
+        help='List example repositories'
     )
     
     args = parser.parse_args()
     
+    # List examples
     if args.list_examples:
-        print("📚 Example Repositories:\n")
+        print("\nExample Repositories:\n")
         for name, info in EXAMPLE_REPOS.items():
-            print(f"  {name}:")
+            print(f"  {name}")
             print(f"    URL: {info['url']}")
             print(f"    Description: {info['description']}")
-            print(f"    Suggested target: {info['target']}")
             print()
         sys.exit(0)
     
-    success = run_demo(args.repo, args.target, args.branch)
-    sys.exit(0 if success else 1)
+    # Run demo
+    run_demo(
+        repo_url=args.repo,
+        target_language=args.target,
+        branch=args.branch,
+        use_hitl=args.hitl,
+        max_files=args.max_files
+    )
 
 
 if __name__ == "__main__":

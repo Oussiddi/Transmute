@@ -343,3 +343,8 @@ class TransmuteWorkflow:
             stats['hitl_statistics'] = self.hitl_system.get_review_statistics()
         
         return stats
+    
+    @property
+    def language_registry(self):
+        """Backward compatibility property for registry."""
+        return self.registry

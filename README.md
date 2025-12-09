@@ -17,7 +17,7 @@
 [![RAG](https://img.shields.io/badge/RAG-enabled-orange.svg)](README.md#features)
 
 <!-- Project Stats -->
-[![Stars](https://img.shields.io/github/stars/YOUR_USERNAME/transmute?style=social)](https://github.com/Oussiddi/transmute)
+[![Stars](https://img.shields.io/github/stars/Oussiddi/transmute?style=social)](https://github.com/Oussiddi/transmute)
 
 > Intelligent code translation between programming languages using Claude AI, RAG, and LangGraph orchestration.
 

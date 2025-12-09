@@ -1,9 +1,23 @@
 # 🔄 Transmute - AI-Powered Code Translation
-
+<!-- Status Badges -->
 [![Python Version](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![Tests](https://img.shields.io/badge/tests-376%20passing-brightgreen.svg)](tests/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+<!-- Technology Stack -->
+[![LangGraph](https://img.shields.io/badge/LangGraph-0.2.55+-purple.svg)](https://github.com/langchain-ai/langgraph)
+[![LangChain](https://img.shields.io/badge/LangChain-0.3.15+-green.svg)](https://github.com/langchain-ai/langchain)
+[![Claude AI](https://img.shields.io/badge/Claude-Sonnet%204-orange.svg)](https://www.anthropic.com/)
+[![Qdrant](https://img.shields.io/badge/Qdrant-1.12+-red.svg)](https://qdrant.tech/)
+
+<!-- Features -->
+[![Languages](https://img.shields.io/badge/languages-6-blue.svg)](README.md#features)
+[![Strategies](https://img.shields.io/badge/strategies-4-green.svg)](README.md#translation-strategies)
+[![RAG](https://img.shields.io/badge/RAG-enabled-orange.svg)](README.md#features)
+
+<!-- Project Stats -->
+[![Stars](https://img.shields.io/github/stars/YOUR_USERNAME/transmute?style=social)](https://github.com/Oussiddi/transmute)
 
 > Intelligent code translation between programming languages using Claude AI, RAG, and LangGraph orchestration.
 

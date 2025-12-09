@@ -72,7 +72,7 @@ def analyze(ctx, repository, branch, detailed):
         state.repository = RepositoryMetadata(
             url=repository,
             platform="github" if "github.com" in repository else "local",
-            branch=branch,
+            default_branch=branch,
             local_path=Path("transmute_work") / f"repo_{state.session_id}"
         )
         
@@ -84,50 +84,26 @@ def analyze(ctx, repository, branch, detailed):
         # Display results
         print_header("📊 Analysis Results")
         
+        # Language
         if state.source_language:
-            console.print(f"[bold]Language:[/bold] {state.source_language.name}")
+            console.print(f"[bold]Primary Language:[/bold] {state.source_language.name}")
+            console.print()
         
-        if state.repository_analysis:
-            analysis = state.repository_analysis
+        # Repository info
+        if state.repository:
+            repo = state.repository
             
-            # Basic metrics
-            table = create_table("Repository Metrics", ["Metric", "Value"])
-            table.add_row("Total Files", str(analysis.total_files))
-            table.add_row("Code Files", str(analysis.code_files))
-            table.add_row("Total Lines", f"{analysis.total_lines:,}")
-            table.add_row("Code Lines", f"{analysis.code_lines:,}")
+            table = create_table("Repository Information", ["Property", "Value"])
+            table.add_row("URL", repo.url)
+            table.add_row("Platform", repo.platform)
+            table.add_row("Branch", repo.default_branch)
             
             console.print(table)
             console.print()
-            
-            # Language breakdown
-            if analysis.language_breakdown:
-                table = create_table("Language Breakdown", ["Language", "Files", "Lines", "Percentage"])
-                
-                for lang, stats in analysis.language_breakdown.items():
-                    table.add_row(
-                        lang,
-                        str(stats.get('file_count', 0)),
-                        f"{stats.get('line_count', 0):,}",
-                        f"{stats.get('percentage', 0):.1f}%"
-                    )
-                
-                console.print(table)
-                console.print()
         
-        if state.feature_profile and detailed:
+        # Feature profile
+        if state.feature_profile:
             profile = state.feature_profile
-            
-            # Features
-            if profile.features_used:
-                console.print("[bold]Features Used:[/bold]")
-                for feature, count in sorted(
-                    profile.features_used.items(),
-                    key=lambda x: x[1],
-                    reverse=True
-                )[:10]:
-                    console.print(f"  • {feature}: {count}")
-                console.print()
             
             # Complexity
             complexity = profile.complexity_score
@@ -137,25 +113,46 @@ def analyze(ctx, repository, branch, detailed):
                 "High"
             )
             
-            console.print(f"[bold]Complexity:[/bold] {complexity:.2f} ({complexity_level})")
+            color = "green" if complexity < 0.3 else "yellow" if complexity < 0.7 else "red"
+            console.print(f"[bold]Complexity:[/bold] [{color}]{complexity:.2f}[/{color}] ({complexity_level})")
             console.print()
             
-            # Patterns
-            if profile.patterns_detected:
-                console.print("[bold]Design Patterns:[/bold]")
-                for pattern in profile.patterns_detected:
-                    console.print(f"  • {pattern}")
-                console.print()
-            
-            # Dependencies
-            if profile.external_dependencies:
-                console.print("[bold]External Dependencies:[/bold]")
-                for dep in profile.external_dependencies[:10]:
-                    console.print(f"  • {dep}")
-                console.print()
+            if detailed:
+                # Features
+                if profile.features_used:
+                    console.print("[bold]Features Used:[/bold]")
+                    for feature, count in sorted(
+                        profile.features_used.items(),
+                        key=lambda x: x[1],
+                        reverse=True
+                    )[:15]:
+                        console.print(f"  • {feature}: [cyan]{count}[/cyan]")
+                    console.print()
+                
+                # Patterns
+                if profile.patterns_detected:
+                    console.print("[bold]Design Patterns Detected:[/bold]")
+                    for pattern in profile.patterns_detected:
+                        console.print(f"  • [green]{pattern}[/green]")
+                    console.print()
+                
+                # Framework
+                if profile.framework_detected:
+                    console.print(f"[bold]Framework:[/bold] [cyan]{profile.framework_detected}[/cyan]")
+                    console.print()
+                
+                # Dependencies
+                if profile.external_dependencies:
+                    console.print("[bold]External Dependencies:[/bold]")
+                    for dep in profile.external_dependencies[:10]:
+                        console.print(f"  • {dep}")
+                    
+                    if len(profile.external_dependencies) > 10:
+                        console.print(f"  ... and {len(profile.external_dependencies) - 10} more")
+                    console.print()
         
-        print_success("Analysis complete")
-        
+        print_success("Analysis complete!")
+
     except KeyboardInterrupt:
         print_error("\nAnalysis cancelled by user")
         sys.exit(130)

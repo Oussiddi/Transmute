@@ -140,6 +140,9 @@ def translate(
         # Run translation
         print_header("📝 Translation Progress")
         
+        # Start with initial state
+        current_state = state
+        
         with create_progress() as progress:
             task = progress.add_task(
                 "[cyan]Translating...",
@@ -149,25 +152,35 @@ def translate(
             # Stream workflow
             for step_output in workflow.stream(state, thread_id="cli"):
                 if isinstance(step_output, dict):
-                    for node_name, node_state in step_output.items():
+                    # Each step_output is {node_name: {updates_dict}}
+                    for node_name, updates in step_output.items():
+                        # Apply updates to current state
+                        if isinstance(updates, dict):
+                            for key, value in updates.items():
+                                if hasattr(current_state, key):
+                                    setattr(current_state, key, value)
+                        
+                        # Update progress bar
                         if node_name == "translate":
-                            # Update progress
-                            if hasattr(node_state, 'migration_plan') and node_state.migration_plan:
-                                total = len(node_state.migration_plan.translation_units)
+                            if hasattr(current_state, 'migration_plan') and current_state.migration_plan:
+                                total = len(current_state.migration_plan.translation_units)
                                 completed = sum(
-                                    1 for u in node_state.migration_plan.translation_units
+                                    1 for u in current_state.migration_plan.translation_units
                                     if u.status == "completed"
                                 )
                                 
                                 if total > 0:
                                     percent = (completed / total) * 100
                                     progress.update(task, completed=percent)
+            
+            # Mark as complete
+            progress.update(task, completed=100)
         
         # Display results
         print_header("📊 Results")
         
-        if state.migration_plan:
-            plan = state.migration_plan
+        if current_state.migration_plan:
+            plan = current_state.migration_plan
             total = len(plan.translation_units)
             completed = sum(1 for u in plan.translation_units if u.status == "completed")
             failed = sum(1 for u in plan.translation_units if u.status == "failed")
@@ -183,7 +196,17 @@ def translate(
                         confidence = unit.confidence_score or 0
                         console.print(f"  • {unit.source_path}: [green]{confidence:.0%}[/green] confidence")
             
-            print_success(f"Translations saved to: {output}/")
+            print_success(f"✨ Translations saved to: {output}/")
+            
+            # Show the actual saved file
+            if completed > 0:
+                first_completed = next(
+                    (u for u in plan.translation_units if u.status == "completed"),
+                    None
+                )
+                if first_completed and first_completed.target_path:
+                    console.print(f"\n[bold cyan]View your translation:[/bold cyan]")
+                    console.print(f"  {first_completed.target_path}")
         else:
             print_error("No translation plan generated")
             sys.exit(1)
@@ -262,7 +285,11 @@ def _create_initial_state(
     
     # Create state
     state = TransmuteState(
-        session_id=f"cli_{uuid.uuid4().hex[:8]}"
+        session_id=f"cli_{uuid.uuid4().hex[:8]}",
+        metadata={
+            'output_dir': output,
+            'max_files': max_files,  # ← ADD THIS HERE IN CONSTRUCTOR
+        }
     )
     
     # Set repository
@@ -283,9 +310,7 @@ def _create_initial_state(
         version=config.version if hasattr(config, 'version') else None
     )
     
-    # Set metadata
-    state.metadata['output_dir'] = output
-    state.metadata['max_files'] = max_files
+    # Set preferred strategy if specified
     if strategy:
         state.metadata['preferred_strategy'] = strategy
     

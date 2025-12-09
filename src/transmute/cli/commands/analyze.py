@@ -79,7 +79,11 @@ def analyze(ctx, repository, branch, detailed):
         # Run analysis
         print_info(f"Analyzing: {repository}")
         
-        result = analysis_agent(state)
+        updates = analysis_agent(state)
+
+        for key, value in updates.items():
+            if hasattr(state, key):
+                setattr(state, key, value)
         
         # Display results
         print_header("📊 Analysis Results")

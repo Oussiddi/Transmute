@@ -87,96 +87,90 @@ class TranslationAgent(BaseAgent):
                 "current_step": "validation",
             }
         
-        # Translate first unit
-        unit = pending[0]
+        # Translate ALL pending units
+        self.log_info(f"Translating {len(pending)} units")
         
-        self.log_info(f"Translating unit: {unit.source_path}")
-        
-        # Mark in progress
-        unit.mark_in_progress()
-        
-        try:
-            # Load source code if not already loaded
-            if not unit.source_code:
-                unit.source_code = self._load_source_code(unit, state)
+        for unit in pending:
+            self.log_info(f"Translating unit: {unit.source_path}")
             
-            # Translate
-            if self.use_llm and self.claude_client:
-                result = self._translate_with_llm(unit, state)
-            else:
-                result = self._translate_placeholder(unit, state)
+            # Mark in progress
+            unit.mark_in_progress()
             
-            # Update unit
-            unit.translated_code = result['translated_code']
-            unit.confidence_score = result.get('confidence', 0.8)
-            unit.translation_strategy = result.get('strategy', 'llm')
-            unit.metadata['explanation'] = result.get('explanation', '')
-            
-            # Mark completed
-            unit.mark_completed()
-            
-            # SAVE TRANSLATION TO DISK IMMEDIATELY
             try:
-                from pathlib import Path
+                # Load source code if not already loaded
+                if not unit.source_code:
+                    unit.source_code = self._load_source_code(unit, state)
                 
-                # Get output directory from state metadata or use default
-                output_base = Path("demo_output/translations")
-                output_base.mkdir(parents=True, exist_ok=True)
-                
-                # Create subdirectories if needed (preserve structure)
-                relative_path = unit.source_path
-                if relative_path.parent != Path('.'):
-                    output_dir = output_base / relative_path.parent
-                    output_dir.mkdir(parents=True, exist_ok=True)
+                # Translate
+                if self.use_llm and self.claude_client:
+                    result = self._translate_with_llm(unit, state)
                 else:
-                    output_dir = output_base
+                    result = self._translate_placeholder(unit, state)
                 
-                # Determine target extension based on target language
-                target_ext_map = {
-                    'java': '.java',
-                    'javascript': '.js',
-                    'typescript': '.ts',
-                    'csharp': '.cs',
-                    'php': '.php',
-                    'python': '.py',
-                }
+                # Update unit
+                unit.translated_code = result['translated_code']
+                unit.confidence_score = result.get('confidence', 0.8)
+                unit.translation_strategy = result.get('strategy', 'llm')
+                unit.metadata['explanation'] = result.get('explanation', '')
                 
-                target_lang_name = state.target_language.name.lower() if state.target_language else 'unknown'
-                target_ext = target_ext_map.get(target_lang_name, '.txt')
+                # Mark completed
+                unit.mark_completed()
                 
-                # Get source extension
-                source_ext = relative_path.suffix
+                # SAVE TRANSLATION TO DISK IMMEDIATELY
+                try:
+                    from pathlib import Path
+                    
+                    # Get output directory from state metadata or use default
+                    output_base = Path(state.metadata.get('output_dir', 'demo_output/translations'))
+                    output_base.mkdir(parents=True, exist_ok=True)
+                    
+                    # Create subdirectories if needed (preserve structure)
+                    relative_path = unit.source_path
+                    if relative_path.parent != Path('.'):
+                        output_dir = output_base / relative_path.parent
+                        output_dir.mkdir(parents=True, exist_ok=True)
+                    else:
+                        output_dir = output_base
+                    
+                    # Determine target extension based on target language
+                    target_ext_map = {
+                        'java': '.java',
+                        'javascript': '.js',
+                        'typescript': '.ts',
+                        'csharp': '.cs',
+                        'php': '.php',
+                        'python': '.py',
+                    }
+                    
+                    target_lang_name = state.target_language.name.lower() if state.target_language else 'unknown'
+                    target_ext = target_ext_map.get(target_lang_name, '.txt')
+                    
+                    # Get source extension
+                    source_ext = relative_path.suffix
+                    
+                    # Replace source extension with target extension
+                    output_file = output_dir / relative_path.name.replace(source_ext, target_ext)
+                    
+                    output_file.write_text(unit.translated_code, encoding='utf-8')
+                    
+                    self.log_info(f"💾 Saved: {output_file}")
+                    
+                except Exception as e:
+                    self.log_warning(f"Could not save translation to disk: {e}")
                 
-                # Replace source extension with target extension
-                output_file = output_dir / relative_path.name.replace(source_ext, target_ext)
-                
-                output_file.write_text(unit.translated_code, encoding='utf-8')
-                
-                self.log_info(f"💾 Saved: {output_file}")
-                
-            except Exception as e:
-                self.log_warning(f"Could not save translation to disk: {e}")
-            
-            self.log_info(f"Completed translation: {unit.source_path} (confidence: {unit.confidence_score:.2f})")
+                self.log_info(f"Completed translation: {unit.source_path} (confidence: {unit.confidence_score:.2f})")
 
-        except Exception as e:
-            self.log_error(f"Translation failed for {unit.source_path}: {e}")
-            unit.mark_failed(str(e))
+            except Exception as e:
+                self.log_error(f"Translation failed for {unit.source_path}: {e}")
+                unit.mark_failed(str(e))
         
-        # Check if all done
+        # Check completion
         completed = len(plan.get_completed_units())
-        
-        if completed == plan.total_units:
-            next_step = "validation"
-            self.log_info(f"All {completed} translations complete")
-        else:
-            next_step = "translation"  # Continue translating
-            self.log_info(f"Progress: {completed}/{plan.total_units}")
+        self.log_info(f"Progress: {completed}/{plan.total_units}")
         
         return {
             "migration_plan": plan,
-            "current_unit": unit,
-            "current_step": next_step,
+            "current_step": "validation",
         }
     
     def _load_source_code(self, unit: TranslationUnit, state: TransmuteState) -> str:

@@ -66,8 +66,15 @@ class PlanningAgent(BaseAgent):
                 }
             
             # Create translation units
-            translation_units = []
             files = file_map[source_lang]
+            
+            # Respect max_files limit if set
+            max_files = state.metadata.get('max_files')
+            if max_files and max_files > 0:
+                files = files[:max_files]
+                self.log_info(f"Limited to {max_files} files (from {len(file_map[source_lang])} total)")
+            
+            translation_units = []
             
             self.log_info(f"Creating translation units for {len(files)} files")
             
